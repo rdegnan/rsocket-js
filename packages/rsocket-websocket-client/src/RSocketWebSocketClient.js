@@ -14,6 +14,7 @@
 import type {Subscriber, Subscription} from 'reactor-core-js/reactivestreams-spec';
 import type {Encoders, TransportClient, DuplexConnection, Frame} from 'rsocket-core';
 
+import ByteBuffer from 'bytebuffer';
 import sprintf from 'fbjs/lib/sprintf';
 import Deferred from 'fbjs/lib/Deferred';
 import {Flux} from 'reactor-core-js/flux';
@@ -24,7 +25,6 @@ import {
   printFrame,
   serializeFrame,
   serializeFrameWithLength,
-  toBuffer,
 } from 'rsocket-core';
 
 export type ClientOptions = {|
@@ -204,7 +204,7 @@ class WSDuplexConnection implements DuplexConnection {
   };
 
   _readFrame(message: MessageEvent): Frame {
-    const buffer = toBuffer(message.data);
+    const buffer = ByteBuffer.wrap(message.data);
     const frame = this._options.lengthPrefixedFrames
       ? deserializeFrameWithLength(buffer, this._encoders)
       : deserializeFrame(buffer, this._encoders);
@@ -226,7 +226,7 @@ class WSDuplexConnection implements DuplexConnection {
       const buffer = this._options.lengthPrefixedFrames
         ? serializeFrameWithLength(frame, this._encoders)
         : serializeFrame(frame, this._encoders);
-      this._socket.send(buffer);
+      this._socket.send(buffer.toArrayBuffer());
     } catch (error) {
       this._handleError(error);
     }

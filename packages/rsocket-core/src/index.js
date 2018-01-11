@@ -56,11 +56,8 @@ export {
   serializeFrameWithLength,
 } from './RSocketBinaryFraming';
 export {
-  byteLength,
-  createBuffer,
-  readUInt24BE,
-  toBuffer,
-  writeUInt24BE,
+  readUint24,
+  writeUint24,
 } from './RSocketBufferUtils';
 export {
   BufferEncoders,

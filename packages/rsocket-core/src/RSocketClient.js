@@ -21,6 +21,7 @@ import type {
 import type {Subscriber} from 'reactor-core-js/reactivestreams-spec';
 import type {Serializer} from './RSocketSerialization';
 
+import Long from 'long';
 import {Flux, UnicastProcessor} from 'reactor-core-js/flux';
 import Deferred from 'fbjs/lib/Deferred';
 import emptyFunction from 'fbjs/lib/emptyFunction';

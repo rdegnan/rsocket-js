@@ -13,6 +13,7 @@
 
 jest.useFakeTimers();
 
+import ByteBuffer from 'bytebuffer';
 import {FRAME_TYPES, deserializeFrame, serializeFrame} from 'rsocket-core';
 import {genMockSubscriber} from 'MockSubscriber';
 import RSocketWebSocketClient from '../RSocketWebSocketClient';
@@ -141,7 +142,7 @@ describe('RSocketWebSocketClient', () => {
         connection.sendOne(frame);
         expect(socket.send.mock.calls.length).toBe(1);
         const buffer = socket.send.mock.calls[0][0];
-        expect(deserializeFrame(buffer)).toEqual(frame);
+        expect(deserializeFrame(ByteBuffer.wrap(buffer))).toEqual(frame);
       });
 
       it('calls receive.onError if the frame cannot be sent', () => {
@@ -165,9 +166,9 @@ describe('RSocketWebSocketClient', () => {
         publisher.onNext(frame2);
         expect(socket.send.mock.calls.length).toBe(2);
         const buffer = socket.send.mock.calls[0][0];
-        expect(deserializeFrame(buffer)).toEqual(frame);
+        expect(deserializeFrame(ByteBuffer.wrap(buffer))).toEqual(frame);
         const buffer2 = socket.send.mock.calls[1][0];
-        expect(deserializeFrame(buffer2)).toEqual(frame2);
+        expect(deserializeFrame(ByteBuffer.wrap(buffer2))).toEqual(frame2);
       });
 
       it('calls receive.onError if frames cannot be sent', () => {
@@ -219,12 +220,12 @@ describe('RSocketWebSocketClient', () => {
         connection.receive().subscribe(subscriber);
 
         const buffer = serializeFrame(frame);
-        socket.mock.message(buffer.slice(0, 2));
+        socket.mock.message(buffer.slice(0, 2).toBuffer());
         expect(subscriber.onComplete.mock.calls.length).toBe(0);
         expect(subscriber.onNext.mock.calls.length).toBe(0);
         expect(subscriber.onError.mock.calls.length).toBe(1);
         const error = subscriber.onError.mock.calls[0][0];
-        expect(error.message.toLowerCase()).toBe('index out of range');
+        expect(error.message).toContain('Illegal offset');
       });
 
       it('calls onComplete when intentionally close()-ed', () => {
@@ -266,13 +267,13 @@ describe('RSocketWebSocketClient', () => {
         connection.receive().subscribe(subscriber);
         // Emit a frame of length one, which is shorter than the smallest
         // possible frame (3 bytes of length, 1 byte of payload).
-        const buffer = new Buffer([0x00, 0x00, 0x01, 0x00]);
-        socket.mock.message(buffer);
+        const buffer = ByteBuffer.wrap([0x00, 0x00, 0x01, 0x00]);
+        socket.mock.message(buffer.toBuffer());
 
         expect(subscriber.onComplete.mock.calls.length).toBe(0);
         expect(subscriber.onError.mock.calls.length).toBe(1);
         const error = subscriber.onError.mock.calls[0][0];
-        expect(error.message.toLowerCase()).toBe('index out of range');
+        expect(error.message).toContain('Illegal offset');
         expect(subscriber.onNext.mock.calls.length).toBe(0);
       });
 

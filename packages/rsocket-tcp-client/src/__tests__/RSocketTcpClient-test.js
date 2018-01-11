@@ -22,6 +22,7 @@ describe('RSocketTcpClient', () => {
   const {default: RSocketTcpClient} = require('../RSocketTcpClient');
   const {genMockSubscriber} = require('MockSubscriber');
   const {UnicastProcessor} = require('reactor-core-js/flux');
+  const ByteBuffer = require('bytebuffer');
 
   beforeEach(() => {
     jest.clearAllTimers();
@@ -150,7 +151,7 @@ describe('RSocketTcpClient', () => {
         connection.sendOne(frame);
         expect(socket.write.mock.calls.length).toBe(1);
         const buffer = socket.write.mock.calls[0][0];
-        expect(deserializeFrameWithLength(buffer)).toEqual(frame);
+        expect(deserializeFrameWithLength(ByteBuffer.wrap(buffer))).toEqual(frame);
       });
 
       it('calls receive.onError if the frame cannot be sent', () => {
@@ -210,7 +211,7 @@ describe('RSocketTcpClient', () => {
         connection.receive().subscribe(subscriber);
         expect(subscriber.onNext.mock.calls.length).toBe(0);
 
-        socket.emit('data', serializeFrameWithLength(frame));
+        socket.emit('data', serializeFrameWithLength(frame).toBuffer());
         expect(subscriber.onNext.mock.calls.length).toBe(1);
         const nextFrame = subscriber.onNext.mock.calls[0][0];
         expect(nextFrame).toEqual(frame);
@@ -229,13 +230,13 @@ describe('RSocketTcpClient', () => {
 
         // Write one byte at a time, client should buffer them
         const buffer = serializeFrameWithLength(frame);
-        for (let ii = 0; ii < buffer.length - 1; ii++) {
-          socket.emit('data', buffer.slice(ii, ii + 1));
+        for (let ii = 0; ii < buffer.limit - 1; ii++) {
+          socket.emit('data', buffer.slice(ii, ii + 1).toBuffer());
         }
         expect(subscriber.onNext.mock.calls.length).toBe(0);
 
         // onNext called once the final byte of the frame is received
-        socket.emit('data', buffer.slice(buffer.length - 1, buffer.length));
+        socket.emit('data', buffer.slice(buffer.limit - 1, buffer.limit).toBuffer());
         expect(subscriber.onNext.mock.calls.length).toBe(1);
         const nextFrame = subscriber.onNext.mock.calls[0][0];
         expect(nextFrame).toEqual(frame);
@@ -283,13 +284,13 @@ describe('RSocketTcpClient', () => {
         connection.receive().subscribe(subscriber);
         // Emit a frame of length one, which is shorter than the smallest
         // possible frame (3 bytes of length, 1 byte of payload).
-        const buffer = new Buffer([0x00, 0x00, 0x01, 0x00]);
-        socket.emit('data', buffer);
+        const buffer = ByteBuffer.wrap([0x00, 0x00, 0x01, 0x00]);
+        socket.emit('data', buffer.toBuffer());
 
         expect(subscriber.onComplete.mock.calls.length).toBe(0);
         expect(subscriber.onError.mock.calls.length).toBe(1);
         const error = subscriber.onError.mock.calls[0][0];
-        expect(error.message.toLowerCase()).toBe('index out of range');
+        expect(error.message).toContain('Illegal offset');
         expect(subscriber.onNext.mock.calls.length).toBe(0);
       });
 

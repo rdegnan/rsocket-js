@@ -13,7 +13,7 @@
 
 import type {Encodable} from './RSocketTypes';
 
-import {Buffer} from 'buffer'; // rewritten for browsers
+import ByteBuffer from 'bytebuffer';
 import invariant from 'fbjs/lib/invariant';
 
 /**
@@ -33,10 +33,10 @@ export const JsonSerializer: Serializer<*> = {
       return null;
     } else if (typeof data === 'string') {
       str = data;
-    } else if (Buffer.isBuffer(data)) {
+    } else if (ByteBuffer.isByteBuffer(data)) {
       str = (data: any).toString('utf8');
     } else {
-      const buffer = Buffer.from(data);
+      const buffer = ByteBuffer.wrap(data);
       str = buffer.toString('utf8');
     }
     return JSON.parse(str);
@@ -55,7 +55,7 @@ export const IdentitySerializer: Serializer<Encodable> = {
     invariant(
       data == null ||
         typeof data === 'string' ||
-        Buffer.isBuffer(data) ||
+        ByteBuffer.isByteBuffer(data) ||
         data instanceof Uint8Array,
       'RSocketSerialization: Expected data to be a string, Buffer, or ' +
         'Uint8Array. Got `%s`.',

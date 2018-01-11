@@ -13,7 +13,7 @@
 
 import type {Encodable} from './RSocketTypes';
 
-import {byteLength} from './RSocketBufferUtils';
+import ByteBuffer from 'bytebuffer';
 import invariant from 'fbjs/lib/invariant';
 
 /**
@@ -23,11 +23,10 @@ export type Encoder<T: Encodable> = {|
   byteLength: (value: Encodable) => number,
   encode: (
     value: Encodable,
-    buffer: Buffer,
-    start: number,
-    end: number,
+    buffer: ByteBuffer,
+    offset: number,
   ) => number,
-  decode: (buffer: Buffer, start: number, end: number) => T,
+  decode: (buffer: ByteBuffer, start: number, end: number) => T,
 |};
 
 /**
@@ -44,51 +43,56 @@ export type Encoders<T: Encodable> = {|
 |};
 
 export const UTF8Encoder: Encoder<string> = {
-  byteLength: (value: Encodable) => byteLength(value, 'utf8'),
-  decode: (buffer: Buffer, start: number, end: number): string => {
-    return buffer.toString('utf8', start, end);
+  byteLength: (value: Encodable) => {
+    invariant(
+      typeof value === 'string',
+      'RSocketEncoding: Expected value to be a string, got `%s`.',
+      value,
+    );
+    return ByteBuffer.calculateUTF8Bytes(value);
+  },
+  decode: (buffer: ByteBuffer, start: number, end: number): string => {
+    return buffer.slice(start, end).toUTF8();
   },
   encode: (
     value: Encodable,
-    buffer: Buffer,
-    start: number,
-    end: number,
+    buffer: ByteBuffer,
+    offset: number,
   ): number => {
     invariant(
       typeof value === 'string',
       'RSocketEncoding: Expected value to be a string, got `%s`.',
       value,
     );
-    buffer.write(value, start, end - start, 'utf8');
-    return end;
+    const length: any = buffer.writeUTF8String(value, offset);
+    return offset + length;
   },
 };
 
-export const BufferEncoder: Encoder<Buffer> = {
-  byteLength: (value: Encodable) => {
+export const BufferEncoder: Encoder<ByteBuffer> = {
+  byteLength: (value: any) => {
     invariant(
-      Buffer.isBuffer(value),
+      ByteBuffer.isByteBuffer(value),
       'RSocketEncoding: Expected value to be a buffer, got `%s`.',
       value,
     );
-    return (value: any).length;
+    return value.limit;
   },
-  decode: (buffer: Buffer, start: number, end: number): Buffer => {
+  decode: (buffer: ByteBuffer, start: number, end: number): ByteBuffer => {
     return buffer.slice(start, end);
   },
   encode: (
-    value: Encodable,
-    buffer: Buffer,
-    start: number,
-    end: number,
+    value: any,
+    buffer: ByteBuffer,
+    offset: number,
   ): number => {
     invariant(
-      Buffer.isBuffer(value),
+      ByteBuffer.isByteBuffer(value),
       'RSocketEncoding: Expected value to be a buffer, got `%s`.',
       value,
     );
-    (value: any).copy(buffer, start, 0, value.length);
-    return end;
+    value.copyTo(buffer, offset, 0, value.limit);
+    return offset + value.limit;
   },
 };
 
@@ -107,7 +111,7 @@ export const Utf8Encoders: Encoders<string> = {
 /**
  * Encode all values as buffers.
  */
-export const BufferEncoders: Encoders<Buffer> = {
+export const BufferEncoders: Encoders<ByteBuffer> = {
   data: BufferEncoder,
   dataMimeType: UTF8Encoder,
   message: UTF8Encoder,

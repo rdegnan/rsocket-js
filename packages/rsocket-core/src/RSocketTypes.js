@@ -114,7 +114,7 @@ export interface DuplexConnection {
 /**
  * A type that can be written to a buffer.
  */
-export type Encodable = string | Buffer | Uint8Array;
+export type Encodable = ByteBuffer | ArrayBuffer | Uint8Array | string;
 
 /**
  * A single unit of data exchanged between the peers of a `RSocket`.

@@ -15,12 +15,12 @@ import type {connect as SocketOptions} from 'net';
 import type {Subscriber, Subscription} from 'reactor-core-js/reactivestreams-spec';
 import type {Encoders, TransportClient, DuplexConnection, Frame} from 'rsocket-core';
 
+import ByteBuffer from 'bytebuffer';
 import net from 'net';
 import Deferred from 'fbjs/lib/Deferred';
 import {Flux} from 'reactor-core-js/flux';
 import {DeferrendScalarSubscription} from 'reactor-core-js/subscription';
 import {
-  createBuffer,
   deserializeFrames,
   serializeFrameWithLength,
 } from 'rsocket-core';
@@ -76,7 +76,7 @@ export default class RSocketTcpClient implements TransportClient {
  */
 class TcpDuplexConnection implements DuplexConnection {
   _active: boolean;
-  _buffer: Buffer;
+  _buffer: ByteBuffer;
   _close: Deferred<void, Error>;
   _encoders: ?Encoders<*>;
   _receivers: Set<Subscriber<Frame>>;
@@ -90,7 +90,7 @@ class TcpDuplexConnection implements DuplexConnection {
     socket: net.Socket,
   ) {
     this._active = true;
-    this._buffer = createBuffer(0);
+    this._buffer = ByteBuffer.allocate(0);
     this._close = new Deferred();
     this._encoders = encoders;
     this._options = options;
@@ -157,7 +157,7 @@ class TcpDuplexConnection implements DuplexConnection {
     return this._close.getPromise();
   }
 
-  _handleData = (chunk: Buffer): void => {
+  _handleData = (chunk: ByteBuffer): void => {
     try {
       const frames = this._readFrames(chunk);
       frames.forEach(frame => {
@@ -181,10 +181,10 @@ class TcpDuplexConnection implements DuplexConnection {
     this.close();
   };
 
-  _readFrames(chunk: Buffer): Array<Frame> {
+  _readFrames(chunk: ByteBuffer): Array<Frame> {
     // Combine results from any partial frames received with new data and
     // extract any frames plus remaining bytes.
-    const buffer = Buffer.concat([this._buffer, chunk]);
+    const buffer = ByteBuffer.concat([this._buffer, chunk]);
     const [frames, remaining] = deserializeFrames(buffer, this._encoders);
     this._buffer = remaining;
     return frames;
@@ -193,7 +193,7 @@ class TcpDuplexConnection implements DuplexConnection {
   _writeFrame(frame: Frame): void {
     try {
       const buffer = serializeFrameWithLength(frame, this._encoders);
-      this._socket.write(buffer);
+      this._socket.write(buffer.toBuffer());
     } catch (error) {
       this._handleError(error);
     }
