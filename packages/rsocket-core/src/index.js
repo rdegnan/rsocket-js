@@ -67,8 +67,10 @@ export {
   byteLength,
   createBuffer,
   readUInt24BE,
+  readUInt64BE,
   toBuffer,
   writeUInt24BE,
+  writeUInt64BE,
 } from './RSocketBufferUtils';
 export {
   BufferEncoders,

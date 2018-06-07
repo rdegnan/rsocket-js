@@ -132,9 +132,7 @@ function buildFile(file, silent) {
     code = format(code);
     fs.writeFileSync(destPath, code);
     // Write .flow type
-    fs
-      .createReadStream(file)
-      .pipe(fs.createWriteStream(destPath + FLOW_EXTENSION));
+    fs.copyFileSync(file, destPath + FLOW_EXTENSION);
     silent ||
       process.stdout.write(
         chalk.green('  \u2022 ') +
